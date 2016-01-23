@@ -90,21 +90,18 @@
 // pin 3 - LCD reset (RST)
 Adafruit_PCD8544 display = Adafruit_PCD8544(7, 6, 5, 4, 3);
 
-// Hardware SPI (faster, but must use certain hardware pins):
-// SCK is LCD serial clock (SCLK) - this is pin 13 on Arduino Uno
-// MOSI is LCD DIN - this is pin 11 on an Arduino Uno
-// pin 5 - Data/Command select (D/C)
-// pin 4 - LCD chip select (CS)
-// pin 3 - LCD reset (RST)
-  //Adafruit_PCD8544 display = Adafruit_PCD8544(5, 4, 3);
-// Note with hardware SPI MISO and SS pins aren't used but will still be read
-// and written to during SPI transfer.  Be careful sharing these pins!
+enum State {
+	menu,
+	time,
+	stopwatch
+};
 
-#define NUMFLAKES 10
-#define XPOS 0
-#define YPOS 1
-#define DELTAY 2
+State watchState = State::time;
+State previousWatchState;
 
+//PINS
+#define BUTTON_1 11
+#define BUTTON_2 12
 
 #define LOGO16_GLCD_HEIGHT 16
 #define LOGO16_GLCD_WIDTH  16
@@ -141,23 +138,38 @@ void setup() {
 	delay(2000);
 	display.clearDisplay();   // clears the screen and buffer
 
+	previousWatchState = watchState;
 
-	// text display tests
-	display.setTextSize(3);
-	display.setTextColor(BLACK);
-	display.setCursor(0, 0);
-	display.println("07");
-	//display.println("30");
-	
-	display.setCursor(3 * 6 * 2, 0);
-	display.setTextSize(2);
-	display.print("pm");
-	display.display();
-	delay(2000);
 }
 
 
 void loop() {
+	if (previousWatchState != watchState) {
+		display.clearDisplay();
+	}
+	previousWatchState = watchState;
+
+	switch (watchState) {
+		case time: displayTime(); break;
+		case stopwatch: displayStopwatch(); break;
+	}
+}
+
+void displayTime() {
+	display.setTextSize(3);
+	display.setTextColor(BLACK);
+	display.setCursor(0, 0);
+	display.println("07");
+	display.println("30");
+
+	display.setCursor(3 * 6 * 2, 0);
+	display.setTextSize(2);
+	display.print("pm");
+	display.display();
+}
+
+int milliseconds = 0;
+void displayStopwatch() {
 
 }
 
