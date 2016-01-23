@@ -8,6 +8,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
+#include <math.h>
 
 
 // Software SPI (slower updates, more flexible pin options):
@@ -26,6 +27,8 @@ enum State {
 
 State watchState = State::time;
 State previousWatchState;
+
+int prev_button_state [2];
 
 //PINS
 #define BUTTON_1 11
@@ -66,12 +69,18 @@ void setup() {
 	delay(2000);
 	display.clearDisplay();   // clears the screen and buffer
 
+	watchState = State::stopwatch;
 	previousWatchState = watchState;
+
+	pinMode(BUTTON_1, INPUT_PULLUP);
+	pinMode(BUTTON_2, INPUT_PULLUP);
+	updateButtonStates();
 
 }
 
 
 void loop() {
+	delay(10);
 	if (previousWatchState != watchState) {
 		display.clearDisplay();
 	}
@@ -81,6 +90,9 @@ void loop() {
 		case time: displayTime(); break;
 		case stopwatch: displayStopwatch(); break;
 	}
+
+	display.display();
+	updateButtonStates();
 }
 
 void displayTime() {
@@ -93,12 +105,61 @@ void displayTime() {
 	display.setCursor(3 * 6 * 2, 0);
 	display.setTextSize(2);
 	display.print("pm");
-	display.display();
 }
 
-int milliseconds = 0;
+unsigned long stopwatch_start_time = 0;
+bool stopwatch_active = false;
+long elapsed_time = 0;
 void displayStopwatch() {
+	if (stopwatch_active) {
+		elapsed_time = millis() - stopwatch_start_time;
 
+		if (buttonReleased(BUTTON_1)) {
+			stopwatch_active = false;
+		}
+	}
+	else {
+		if (buttonReleased(BUTTON_1)) {
+			stopwatch_start_time = millis();
+			stopwatch_active = true;
+		}
+	}
+
+	display.clearDisplay();
+	display.setTextSize(2);
+	display.setCursor(0, 0);
+	display.print(formatStopwatchString(elapsed_time));
+}
+
+String formatStopwatchString(unsigned long passed_time) {
+	int display_milliseconds = (int)(passed_time % 1000);
+	int display_seconds, display_minutes, display_hours = 0;
+	String formatted_string = String(display_milliseconds);
+
+	if (passed_time > 999) {
+		long seconds = ((passed_time - display_milliseconds) / 1000);
+		display_seconds = (int)(seconds % 60);
+		formatted_string = String(display_seconds) + "." + formatted_string;
+		if (seconds > 59) {
+			long minutes = ((seconds - display_seconds) / 1000);
+			display_minutes = (int)(minutes % 60);
+			formatted_string = String(display_minutes) + ":" + formatted_string;
+			if (minutes > 59) {
+				int display_hours = ((minutes - display_minutes) / 60);
+				formatted_string = String(display_hours) + "h" + formatted_string;
+			}
+		}
+	}
+
+	return formatted_string;
 }
 
 
+void updateButtonStates() {
+	prev_button_state[BUTTON_1] = digitalRead(BUTTON_1);
+	prev_button_state[BUTTON_2] = digitalRead(BUTTON_2);
+}
+
+bool buttonReleased(int button) {
+	return (prev_button_state[button] == 0 && digitalRead(button) == 1);
+}
