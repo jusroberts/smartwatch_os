@@ -28,10 +28,10 @@ enum State {
 State watchState = State::time;
 State previousWatchState;
 
-int prev_button_state [2];
+volatile bool button_1_triggered;
 
 //PINS
-#define BUTTON_1 11
+#define BUTTON_1 2
 #define BUTTON_2 12
 
 #define LOGO16_GLCD_HEIGHT 16
@@ -73,8 +73,8 @@ void setup() {
 	previousWatchState = watchState;
 
 	pinMode(BUTTON_1, INPUT_PULLUP);
-	pinMode(BUTTON_2, INPUT_PULLUP);
-	updateButtonStates();
+	button_1_triggered = false;
+	attachInterrupt(digitalPinToInterrupt(BUTTON_1), setButtonTriggers, RISING);
 
 }
 
@@ -92,7 +92,6 @@ void loop() {
 	}
 
 	display.display();
-	updateButtonStates();
 }
 
 void displayTime() {
@@ -114,52 +113,60 @@ void displayStopwatch() {
 	if (stopwatch_active) {
 		elapsed_time = millis() - stopwatch_start_time;
 
-		if (buttonReleased(BUTTON_1)) {
+		if (getButtonTriggered()) {
 			stopwatch_active = false;
 		}
 	}
 	else {
-		if (buttonReleased(BUTTON_1)) {
+		if (getButtonTriggered()) {
 			stopwatch_start_time = millis();
 			stopwatch_active = true;
 		}
 	}
 
 	display.clearDisplay();
-	display.setTextSize(2);
 	display.setCursor(0, 0);
-	display.print(formatStopwatchString(elapsed_time));
+	printStopwatchStrings(elapsed_time);
 }
 
-String formatStopwatchString(unsigned long passed_time) {
+void printStopwatchStrings(unsigned long passed_time) {
 	int display_milliseconds = (int)(passed_time % 1000);
 	int display_seconds, display_minutes, display_hours = 0;
-	String formatted_string = String(display_milliseconds);
 
 	if (passed_time > 999) {
+		display.setTextSize(2);
 		long seconds = ((passed_time - display_milliseconds) / 1000);
 		display_seconds = (int)(seconds % 60);
-		formatted_string = String(display_seconds) + "." + formatted_string;
 		if (seconds > 59) {
-			long minutes = ((seconds - display_seconds) / 1000);
+			long minutes = ((seconds - display_seconds) / 60);
 			display_minutes = (int)(minutes % 60);
-			formatted_string = String(display_minutes) + ":" + formatted_string;
 			if (minutes > 59) {
 				int display_hours = ((minutes - display_minutes) / 60);
-				formatted_string = String(display_hours) + "h" + formatted_string;
+				display.print(String(display_hours) + "h");
 			}
+			display.println(String(display_minutes) + "m");
+		}
+		display.println(String(display_seconds) + "s");
+	}
+	display.setTextSize(1);
+	String preMilliString = "";
+	if (display_milliseconds < 100) {
+		preMilliString += "0";
+		if (display_milliseconds < 10) {
+			preMilliString += "0";
 		}
 	}
-
-	return formatted_string;
+	display.println(preMilliString + String(display_milliseconds));
 }
 
-
-void updateButtonStates() {
-	prev_button_state[BUTTON_1] = digitalRead(BUTTON_1);
-	prev_button_state[BUTTON_2] = digitalRead(BUTTON_2);
+bool getButtonTriggered() {
+	if (button_1_triggered) {
+		button_1_triggered = false;
+		return true;
+	}
+	return false;
 }
 
-bool buttonReleased(int button) {
-	return (prev_button_state[button] == 0 && digitalRead(button) == 1);
+void setButtonTriggers() {
+	button_1_triggered = true;
 }
