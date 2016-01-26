@@ -85,4 +85,6 @@ extern "C" void __cxa_pure_virtual() {;}
 #define portInputRegister(P)
 #define portModeRegister(P)
 #include <..\smartwatch_os\smartwatch_os.ino>
+#include <..\smartwatch_os\accelerometer.cpp>
+#include <..\smartwatch_os\accelerometer.h>
 #endif

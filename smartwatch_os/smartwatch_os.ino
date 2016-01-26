@@ -9,6 +9,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
 #include <math.h>
+#include <accelerometer.h>
 
 
 // Software SPI (slower updates, more flexible pin options):
@@ -18,11 +19,13 @@
 // pin 4 - LCD chip select (CS)
 // pin 3 - LCD reset (RST)
 Adafruit_PCD8544 display = Adafruit_PCD8544(7, 6, 5, 4, 3);
+Accelerometer accelerometer = Accelerometer(A0, A1, A2);
 
 enum State {
 	menu,
 	time,
-	stopwatch
+	stopwatch,
+	activity
 };
 
 State watchState = State::time;
@@ -73,14 +76,14 @@ void setup() {
 	previousWatchState = watchState;
 
 	pinMode(BUTTON_1, INPUT_PULLUP);
-	button_1_triggered = false;
 	attachInterrupt(digitalPinToInterrupt(BUTTON_1), setButtonTriggers, RISING);
-
+	button_1_triggered = false;
 }
 
 
 void loop() {
 	delay(10);
+	accelerometer.checkForActivity();
 	if (previousWatchState != watchState) {
 		display.clearDisplay();
 	}
@@ -89,9 +92,17 @@ void loop() {
 	switch (watchState) {
 		case time: displayTime(); break;
 		case stopwatch: displayStopwatch(); break;
+		case activity: displayActivity(); break;
 	}
 
 	display.display();
+}
+
+void displayActivity() {
+	display.setTextSize(1);
+	display.println("Activity");
+	display.setTextSize(3);
+	display.println(String(accelerometer.getActivity()));
 }
 
 void displayTime() {
@@ -126,6 +137,8 @@ void displayStopwatch() {
 
 	display.clearDisplay();
 	display.setCursor(0, 0);
+	display.setTextSize(1);
+	display.println("Stop Watch");
 	printStopwatchStrings(elapsed_time);
 }
 
